@@ -3,8 +3,9 @@ import Enemy from "./Enemy.js";
 import MovingDirection from "./MovingDirection.js";
 
 export default class TileMap {
-  constructor(tileSize) {
+  constructor(tileSize, velocity) {
     this.tileSize = tileSize;
+    this.velocity = velocity;
 
     this.yellowDot = new Image();
     this.yellowDot.src = "images/yellowDot.png";
@@ -20,15 +21,9 @@ export default class TileMap {
     this.powerDotAnmationTimer = this.powerDotAnmationTimerDefault;
   }
 
-  //1 - wall
-  //0 - dots
-  //4 - pacman
-  //5 - empty space
-  //6 - enemy
-  //7 - power dot
   map = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 1],
+    [1, 7, 0, 0, 0, 3, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 1],
     [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
     [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
     [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
@@ -55,31 +50,36 @@ export default class TileMap {
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 
   ];
+
+    this.enemies = this.getEnemies(); // Inicializa a los enemigos
+
+    // Inicializa a Pac-Man
+    this.pacman = this.getPacman();
   draw(ctx) {
     for (let row = 0; row < this.map.length; row++) {
       for (let column = 0; column < this.map[row].length; column++) {
         let tile = this.map[row][column];
         if (tile === 1) {
           this.#drawWall(ctx, column, row, this.tileSize);
-        } else if (tile === 0) {
+        } else if (tile === 0 || tile === 3) {
           this.#drawDot(ctx, column, row, this.tileSize);
         } else if (tile == 7) {
           this.#drawPowerDot(ctx, column, row, this.tileSize);
         } else {
           this.#drawBlank(ctx, column, row, this.tileSize);
         }
-
-        // ctx.strokeStyle = "yellow";
-        // ctx.strokeRect(
-        //   column * this.tileSize,
-        //   row * this.tileSize,
-        //   this.tileSize,
-        //   this.tileSize
-        // );
+        if (tile === 3) {
+          // Cambio visual del 3 a 0
+          this.map[row][column] = 0;
+          // Buscar al enemigo y cambiar su dirección
+          const enemy = this.getEnemyAtPosition(column, row);
+          if (enemy) {
+            enemy.changeDirection();
+          }
+        }
       }
     }
   }
-
   #drawDot(ctx, column, row, size) {
     ctx.drawImage(
       this.yellowDot,
@@ -135,6 +135,18 @@ export default class TileMap {
       }
     }
   }
+  getEnemyAtPosition(x, y) {
+    // Esta función busca y devuelve el enemigo en las coordenadas (x, y)
+    for (const enemy of this.enemies) {
+      const enemyX = Math.floor(enemy.x / this.tileSize);
+      const enemyY = Math.floor(enemy.y / this.tileSize);
+      if (enemyX === x && enemyY === y) {
+        return enemy;
+      }
+    }
+    return null;
+  }
+  
 
   getEnemies(velocity) {
     const enemies = [];
@@ -144,13 +156,24 @@ export default class TileMap {
         const tile = this.map[row][column];
         if (tile == 6) {
           this.map[row][column] = 0;
+          let changeDirection = false;
+            if (this.map[row][column - 1] === 0) {
+              changeDirection = MovingDirection.left;
+          } else if (this.map[row][column + 1] === 0) {
+              changeDirection = MovingDirection.right;
+          } else if (this.map[row - 1][column] === 0) {
+              changeDirection = MovingDirection.up;
+          } else if (this.map[row + 1][column] === 0) {
+              changeDirection = MovingDirection.down;
+          }
           enemies.push(
             new Enemy(
               column * this.tileSize,
               row * this.tileSize,
               this.tileSize,
               velocity,
-              this
+              this,
+              changeDirection
             )
           );
         }
@@ -240,3 +263,4 @@ export default class TileMap {
     return false;
   }
 }
+
